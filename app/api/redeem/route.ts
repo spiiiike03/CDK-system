@@ -36,9 +36,6 @@ export async function POST(request: NextRequest) {
     if (!codes.length) {
       return badRequest("请输入 CDK");
     }
-    if (codes.length > 50) {
-      return badRequest("单次最多兑换 50 个 CDK");
-    }
 
     const ip = clientIp(request);
     const results: Array<RedeemSuccess | RedeemFailure> = [];

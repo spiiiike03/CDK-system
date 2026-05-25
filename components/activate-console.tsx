@@ -110,7 +110,7 @@ export function ActivateConsole() {
               onChange={(event) => setCdkText(event.target.value)}
             />
             <div className="flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
-              <span className="text-sm text-slate-600">已识别 {codes.length} 个 CDK，单次最多 50 个。</span>
+              <span className="text-sm text-slate-600">已识别 {codes.length} 个 CDK。</span>
               <button className="button primary min-w-[132px]" disabled={loading || !codes.length} type="submit">
                 <ShieldCheck size={18} />
                 {loading ? "兑换中" : "立即兑换"}
