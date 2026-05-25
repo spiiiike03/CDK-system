@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Download, KeyRound, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Download, KeyRound, Search, ShieldCheck } from "lucide-react";
 
-type RedeemResultItem = {
+type ActionMode = "redeem" | "query";
+
+type ResultItem = {
   ok: boolean;
   code: string;
   message?: string;
@@ -13,31 +15,33 @@ type RedeemResultItem = {
   files?: Array<{ id: string; name: string }>;
 };
 
-type RedeemResponse = {
+type ActionResponse = {
   ok: boolean;
   message?: string;
   filename?: string;
   deliveredCount?: number;
   successCount?: number;
   failCount?: number;
-  results?: RedeemResultItem[];
+  results?: ResultItem[];
   payload?: unknown;
 };
 
 export function ActivateConsole() {
+  const [mode, setMode] = useState<ActionMode>("redeem");
   const [cdkText, setCdkText] = useState("");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
-  const [result, setResult] = useState<RedeemResponse | null>(null);
+  const [result, setResult] = useState<ActionResponse | null>(null);
 
   const codes = parseCodes(cdkText);
+  const isQuery = mode === "query";
 
-  async function redeem() {
+  async function submit() {
     setLoading(true);
-    setNotice({ type: "info", message: "正在兑换 CDK，请稍候..." });
+    setNotice({ type: "info", message: isQuery ? "正在查询 CDK，请稍候..." : "正在兑换 CDK，请稍候..." });
     setResult(null);
     try {
-      const response = await fetch("/api/redeem", {
+      const response = await fetch(isQuery ? "/api/query" : "/api/redeem", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ cdks: codes }),
@@ -45,12 +49,12 @@ export function ActivateConsole() {
       const data = await response.json();
       setResult(data);
       if (!response.ok || !data.ok) {
-        setNotice({ type: "error", message: data.message || "兑换失败" });
+        setNotice({ type: "error", message: data.message || (isQuery ? "查询失败" : "兑换失败") });
         return;
       }
-      setNotice({ type: "success", message: data.message || "兑换成功" });
+      setNotice({ type: "success", message: data.message || (isQuery ? "查询成功" : "兑换成功") });
     } catch (error) {
-      setNotice({ type: "error", message: error instanceof Error ? error.message : "兑换失败" });
+      setNotice({ type: "error", message: error instanceof Error ? error.message : (isQuery ? "查询失败" : "兑换失败") });
     } finally {
       setLoading(false);
     }
@@ -78,7 +82,7 @@ export function ActivateConsole() {
           <div className="brand-mark"><KeyRound size={22} /></div>
           <div>
             <h1>JSON 文件兑换</h1>
-            <span>每行一个 CDK，可批量兑换并合并下载</span>
+            <span>每行一个 CDK，可批量兑换、查询并合并下载</span>
           </div>
         </div>
       </header>
@@ -88,32 +92,61 @@ export function ActivateConsole() {
           <div className="mb-6 flex items-start justify-between gap-4 max-[640px]:flex-col">
             <div>
               <p className="mb-2 text-sm font-bold uppercase tracking-[0.18em] text-brand">CDK REDEEM</p>
-              <h2 className="m-0 text-3xl font-bold text-ink max-[640px]:text-2xl">兑换 JSON 发放文件</h2>
+              <h2 className="m-0 text-3xl font-bold text-ink max-[640px]:text-2xl">兑换 / 查询 JSON 文件</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                支持多行输入，每行一个 CDK。系统会按每个 CDK 的后台配置发放对应数量的 JSON，并可整合成一个下载文件。
+                兑换会消耗可用 CDK 并发放库存 JSON；查询不会消耗库存，可用已兑换 CDK 找回当时发放的 JSON，下载内容和兑换时一致。
               </p>
             </div>
             <span className="status ok">自动锁库存</span>
+          </div>
+
+          <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1">
+            <button
+              className={`button border-0 ${mode === "redeem" ? "primary" : ""}`}
+              type="button"
+              onClick={() => {
+                setMode("redeem");
+                setNotice(null);
+                setResult(null);
+              }}
+            >
+              <ShieldCheck size={17} />
+              CDK 兑换
+            </button>
+            <button
+              className={`button border-0 ${mode === "query" ? "primary" : ""}`}
+              type="button"
+              onClick={() => {
+                setMode("query");
+                setNotice(null);
+                setResult(null);
+              }}
+            >
+              <Search size={17} />
+              CDK 查询
+            </button>
           </div>
 
           <form
             className="space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
-              void redeem();
+              void submit();
             }}
           >
             <textarea
               className="textarea mono min-h-[150px] text-[15px]"
-              placeholder={"请输入 CDK，每行一个\nCDK-ABCD-2345-EFGH\nCDK-HJKL-6789-MNPQ"}
+              placeholder={isQuery
+                ? "请输入已兑换 CDK，每行一个\nCDK-ABCD-2345-EFGH\nCDK-HJKL-6789-MNPQ"
+                : "请输入 CDK，每行一个\nCDK-ABCD-2345-EFGH\nCDK-HJKL-6789-MNPQ"}
               value={cdkText}
               onChange={(event) => setCdkText(event.target.value)}
             />
             <div className="flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
               <span className="text-sm text-slate-600">已识别 {codes.length} 个 CDK。</span>
               <button className="button primary min-w-[132px]" disabled={loading || !codes.length} type="submit">
-                <ShieldCheck size={18} />
-                {loading ? "兑换中" : "立即兑换"}
+                {isQuery ? <Search size={18} /> : <ShieldCheck size={18} />}
+                {loading ? (isQuery ? "查询中" : "兑换中") : (isQuery ? "立即查询" : "立即兑换")}
               </button>
             </div>
           </form>
@@ -127,7 +160,7 @@ export function ActivateConsole() {
                   <BadgeCheck className="text-mint" size={24} />
                   <div>
                     <strong className="block text-ink">
-                      成功 {result.successCount || 0} 个，失败 {result.failCount || 0} 个，发放 {result.deliveredCount || 0} 个 JSON
+                      成功 {result.successCount || 0} 个，失败 {result.failCount || 0} 个，文件 {result.deliveredCount || 0} 个
                     </strong>
                     <span className="text-sm text-slate-600">{result.filename || "cdk-export.json"}</span>
                   </div>
@@ -154,8 +187,8 @@ export function ActivateConsole() {
                       <span className="mono text-sm font-bold text-ink">{item.code}</span>
                       <div className="mt-1 text-sm text-slate-600">
                         {item.ok
-                          ? `已发放 ${item.deliveredCount || 0} 个 JSON`
-                          : item.message || "兑换失败"}
+                          ? `文件 ${item.deliveredCount || 0} 个`
+                          : item.message || (isQuery ? "查询失败" : "兑换失败")}
                       </div>
                     </div>
                     {item.ok && item.payload ? (
@@ -179,12 +212,12 @@ export function ActivateConsole() {
 
         <aside className="space-y-4">
           <div className="panel p-5">
-            <h3 className="m-0 text-base font-bold text-ink">兑换说明</h3>
+            <h3 className="m-0 text-base font-bold text-ink">使用说明</h3>
             <ul className="mt-3 space-y-2 pl-5 text-sm leading-6 text-slate-600">
-              <li>每行输入一个 CDK，可一次兑换多个。</li>
-              <li>每个 CDK 会按后台设置发放对应数量 JSON。</li>
+              <li>兑换：每行输入一个可用 CDK，按后台设置发放 JSON。</li>
+              <li>查询：每行输入一个已兑换 CDK，可找回已发放 JSON。</li>
+              <li>查询不会再次消耗 CDK，也不会改动库存。</li>
               <li>可下载单个 CDK，也可合并下载全部成功结果。</li>
-              <li>库存不足或已使用的 CDK 不会影响其他行继续兑换。</li>
             </ul>
           </div>
         </aside>
