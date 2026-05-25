@@ -1,0 +1,92 @@
+import { neon } from "@neondatabase/serverless";
+
+type NeonSql = ReturnType<typeof neon>;
+type QueryRows = Record<string, any>[];
+
+let client: NeonSql | null = null;
+
+export function sql(strings: TemplateStringsArray, ...values: unknown[]): Promise<QueryRows> {
+  if (!client) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is required");
+    }
+    client = neon(databaseUrl);
+  }
+  return client(strings, ...(values as any[])) as Promise<QueryRows>;
+}
+
+let schemaReady: Promise<void> | null = null;
+
+export async function ensureSchema() {
+  if (!schemaReady) {
+    schemaReady = createSchema();
+  }
+  return schemaReady;
+}
+
+async function createSchema() {
+  await sql`create extension if not exists pgcrypto`;
+  await sql`
+    create table if not exists json_files (
+      id uuid primary key default gen_random_uuid(),
+      original_name text not null,
+      content jsonb not null,
+      status text not null default 'available'
+        check (status in ('available', 'delivered', 'disabled')),
+      imported_at timestamptz not null default now(),
+      delivered_at timestamptz,
+      delivered_cdk_id uuid
+    )
+  `;
+  await sql`
+    create table if not exists cdk_codes (
+      id uuid primary key default gen_random_uuid(),
+      code text not null unique,
+      status text not null default 'active'
+        check (status in ('active', 'used', 'disabled')),
+      file_count int not null default 1 check (file_count > 0),
+      max_uses int not null default 1 check (max_uses > 0),
+      used_count int not null default 0 check (used_count >= 0),
+      expires_at timestamptz,
+      used_at timestamptz,
+      created_at timestamptz not null default now()
+    )
+  `;
+  await sql`
+    create table if not exists redeem_records (
+      id uuid primary key default gen_random_uuid(),
+      cdk_id uuid references cdk_codes(id),
+      cdk_code text not null,
+      file_ids uuid[] not null,
+      delivered_count int not null,
+      ip text,
+      created_at timestamptz not null default now()
+    )
+  `;
+  await sql`create index if not exists json_files_status_idx on json_files(status, imported_at)`;
+  await sql`create index if not exists cdk_codes_code_idx on cdk_codes(upper(code))`;
+  await sql`create index if not exists redeem_records_created_idx on redeem_records(created_at desc)`;
+}
+
+export type JsonFileRow = {
+  id: string;
+  original_name: string;
+  content?: unknown;
+  status: "available" | "delivered" | "disabled";
+  imported_at: string;
+  delivered_at: string | null;
+  delivered_cdk_id: string | null;
+};
+
+export type CdkRow = {
+  id: string;
+  code: string;
+  status: "active" | "used" | "disabled";
+  file_count: number;
+  max_uses: number;
+  used_count: number;
+  expires_at: string | null;
+  used_at: string | null;
+  created_at: string;
+};
