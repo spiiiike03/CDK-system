@@ -65,7 +65,6 @@ export function ActivateConsole() {
             <span>输入 CDK 后自动发放库存 JSON</span>
           </div>
         </div>
-        <a className="button" href="/admin">管理后台</a>
       </header>
 
       <main className="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,1fr)_360px] gap-5 max-[900px]:grid-cols-1">
