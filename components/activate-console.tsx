@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Download, KeyRound, ShieldCheck, Users } from "lucide-react";
+import { BadgeCheck, Download, KeyRound, ShieldCheck } from "lucide-react";
 
 type RedeemResultItem = {
   ok: boolean;
@@ -178,21 +178,6 @@ export function ActivateConsole() {
         </section>
 
         <aside className="space-y-4">
-          <div className="panel p-5">
-            <div className="mb-3 flex items-center gap-2 font-bold text-ink">
-              <Users size={18} />
-              联系方式
-            </div>
-            <div className="space-y-2 text-sm text-slate-600">
-              <a className="block hover:text-brand" href="https://qm.qq.com/q/GmN6NYIh6c" target="_blank" rel="noreferrer">
-                售后 QQ 群：1072653807
-              </a>
-              <a className="block hover:text-brand" href="https://qm.qq.com/q/Bz7bx904XQ" target="_blank" rel="noreferrer">
-                合作联系 QQ：191176548
-              </a>
-            </div>
-          </div>
-
           <div className="panel p-5">
             <h3 className="m-0 text-base font-bold text-ink">兑换说明</h3>
             <ul className="mt-3 space-y-2 pl-5 text-sm leading-6 text-slate-600">
