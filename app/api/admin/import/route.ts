@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { assertAdmin } from "@/lib/auth";
+import { normalizePrefix } from "@/lib/cdk";
 import { ensureSchema, sql } from "@/lib/db";
 import { badRequest, json, serverError } from "@/lib/http";
 
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
     assertAdmin(request);
     await ensureSchema();
     const body = await request.json().catch(() => ({}));
+    const cdkPrefix = normalizePrefix(body.cdkPrefix ?? body.prefix);
     const rawItems = Array.isArray(body.items) ? body.items as ImportItem[] : [];
     const items = rawItems.flatMap((item, index) => parseImportItem(item, index));
     if (!rawItems.length) {
@@ -42,13 +44,13 @@ export async function POST(request: NextRequest) {
         continue;
       }
       await sql`
-        insert into json_files (original_name, content)
-        values (${item.name}, ${JSON.stringify(item.content)}::jsonb)
+        insert into json_files (original_name, cdk_prefix, content)
+        values (${item.name}, ${cdkPrefix}, ${JSON.stringify(item.content)}::jsonb)
       `;
       imported += 1;
     }
 
-    return json({ ok: true, imported });
+    return json({ ok: true, imported, cdkPrefix });
   } catch (error) {
     if (error instanceof Response) return error;
     if (error instanceof ImportParseError) return badRequest(error.message);

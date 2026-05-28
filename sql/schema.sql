@@ -3,6 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists json_files (
   id uuid primary key default gen_random_uuid(),
   original_name text not null,
+  cdk_prefix text not null default 'CDK',
   content jsonb not null,
   status text not null default 'available'
     check (status in ('available', 'delivered', 'disabled')),
@@ -35,5 +36,6 @@ create table if not exists redeem_records (
 );
 
 create index if not exists json_files_status_idx on json_files(status, imported_at);
+create index if not exists json_files_prefix_status_idx on json_files(cdk_prefix, status, imported_at);
 create index if not exists cdk_codes_code_idx on cdk_codes(upper(code));
 create index if not exists redeem_records_created_idx on redeem_records(created_at desc);

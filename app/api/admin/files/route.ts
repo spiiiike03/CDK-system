@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     assertAdmin(request);
     await ensureSchema();
     const rows = await sql`
-      select id, original_name, status, imported_at, delivered_at, delivered_cdk_id
+      select id, original_name, cdk_prefix, status, imported_at, delivered_at, delivered_cdk_id
       from json_files
       order by imported_at desc
       limit 200

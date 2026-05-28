@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { downloadName, normalizeCdk } from "@/lib/cdk";
+import { cdkPrefixFromCode, downloadName, normalizeCdk } from "@/lib/cdk";
 import { ensureSchema, sql } from "@/lib/db";
 import { badRequest, clientIp, json, serverError } from "@/lib/http";
 
@@ -108,6 +108,7 @@ function buildMessage(successCount: number, failCount: number, deliveredCount: n
 }
 
 async function redeemOne(code: string, ip: string): Promise<RedeemSuccess | RedeemFailure> {
+  const cdkPrefix = cdkPrefixFromCode(code);
   const rows = await sql`
     with selected_cdk as (
       select *
@@ -122,6 +123,7 @@ async function redeemOne(code: string, ip: string): Promise<RedeemSuccess | Rede
       select id
       from json_files
       where status = 'available'
+        and cdk_prefix = ${cdkPrefix}
       order by imported_at asc
       limit (select file_count from selected_cdk)
       for update skip locked
@@ -182,7 +184,7 @@ async function redeemOne(code: string, ip: string): Promise<RedeemSuccess | Rede
   `;
 
   if (!rows.length) {
-    return { ok: false, code, message: await redeemFailureMessage(code) };
+    return { ok: false, code, message: await redeemFailureMessage(code, cdkPrefix) };
   }
 
   const files = rows[0].files as RedeemFile[];
@@ -200,7 +202,7 @@ async function redeemOne(code: string, ip: string): Promise<RedeemSuccess | Rede
   };
 }
 
-async function redeemFailureMessage(code: string) {
+async function redeemFailureMessage(code: string, cdkPrefix: string) {
   const rows = await sql`
     select status, file_count, used_count, max_uses, expires_at
     from cdk_codes
@@ -220,5 +222,5 @@ async function redeemFailureMessage(code: string) {
   if (cdk.expires_at && new Date(cdk.expires_at).getTime() <= Date.now()) {
     return "CDK 已过期";
   }
-  return "库存不足，请联系售后";
+  return `${cdkPrefix} 分类库存不足，请联系售后`;
 }

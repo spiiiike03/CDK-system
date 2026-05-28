@@ -40,6 +40,7 @@ type CdkItem = {
 type FileItem = {
   id: string;
   original_name: string;
+  cdk_prefix: string;
   status: "available" | "delivered" | "disabled";
   imported_at: string;
   delivered_at: string | null;
@@ -106,6 +107,10 @@ function statusText(status: string) {
   return map[status] || status;
 }
 
+function prefixFromCode(code: string) {
+  return (code.split("-")[0] || "CDK").toUpperCase();
+}
+
 export function AdminConsole() {
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
@@ -167,11 +172,11 @@ export function AdminConsole() {
         const text = await file.text();
         return { name: file.name, text };
       }));
-      const result = await api<{ imported: number }>("/api/admin/import", {
+      const result = await api<{ imported: number; cdkPrefix: string }>("/api/admin/import", {
         method: "POST",
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ cdkPrefix: prefix, items }),
       });
-      setMessage({ type: "success", text: `已导入 ${result.imported} 个账号 JSON` });
+      setMessage({ type: "success", text: `已导入 ${result.imported} 个 ${result.cdkPrefix} 分类账号 JSON` });
       await refresh();
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "导入失败，请确认文件是合法 JSON/JSONL/TXT" });
@@ -271,7 +276,7 @@ export function AdminConsole() {
                   );
                 })}
               </div>
-              <ImportPanel onImport={importFiles} />
+              <ImportPanel prefix={prefix} setPrefix={setPrefix} onImport={importFiles} />
               <GeneratePanel
                 expiresAt={expiresAt}
                 fileCount={fileCount}
@@ -318,20 +323,35 @@ export function AdminConsole() {
   );
 }
 
-function ImportPanel({ onImport }: { onImport: (files: FileList | null) => void }) {
+function ImportPanel({
+  prefix,
+  setPrefix,
+  onImport,
+}: {
+  prefix: string;
+  setPrefix: (value: string) => void;
+  onImport: (files: FileList | null) => void;
+}) {
   return (
     <div className="panel p-5">
       <div className="mb-4 flex items-center gap-2 font-bold text-ink">
         <Upload size={18} />
         导入账号 JSON
       </div>
-      <input
-        className="input h-auto py-2"
-        multiple
-        accept="application/json,application/x-ndjson,text/plain,.json,.jsonl,.txt"
-        type="file"
-        onChange={(event) => void onImport(event.target.files)}
-      />
+      <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-3 max-[640px]:grid-cols-1">
+        <Field label="分类前缀">
+          <input className="input mono" value={prefix} onChange={(event) => setPrefix(event.target.value)} />
+        </Field>
+        <Field label="账号文件">
+          <input
+            className="input h-auto py-2"
+            multiple
+            accept="application/json,application/x-ndjson,text/plain,.json,.jsonl,.txt"
+            type="file"
+            onChange={(event) => void onImport(event.target.files)}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -411,11 +431,12 @@ function FilesTable({ items }: { items: FileItem[] }) {
       <h2 className="mb-4 mt-0 text-lg font-bold text-ink">JSON 库存</h2>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>文件名</th><th>状态</th><th>导入时间</th><th>发放时间</th></tr></thead>
+          <thead><tr><th>文件名</th><th>分类</th><th>状态</th><th>导入时间</th><th>发放时间</th></tr></thead>
           <tbody>
             {items.map((item) => (
               <tr key={item.id}>
                 <td>{item.original_name}</td>
+                <td className="mono">{item.cdk_prefix}</td>
                 <td><span className={`status ${statusClass(item.status)}`}>{statusText(item.status)}</span></td>
                 <td>{formatDate(item.imported_at)}</td>
                 <td>{formatDate(item.delivered_at)}</td>
@@ -448,11 +469,12 @@ function CdksTable({
       </div>
       <div className="table-wrap">
         <table>
-          <thead><tr><th>CDK</th><th>状态</th><th>发放数</th><th>使用</th><th>过期</th><th>操作</th></tr></thead>
+          <thead><tr><th>CDK</th><th>分类</th><th>状态</th><th>发放数</th><th>使用</th><th>过期</th><th>操作</th></tr></thead>
           <tbody>
             {items.map((item) => (
               <tr key={item.id}>
                 <td className="mono">{item.code}</td>
+                <td className="mono">{prefixFromCode(item.code)}</td>
                 <td><span className={`status ${statusClass(item.status)}`}>{statusText(item.status)}</span></td>
                 <td>{item.file_count}</td>
                 <td>{item.used_count}/{item.max_uses}</td>

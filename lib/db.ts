@@ -31,6 +31,7 @@ async function createSchema() {
     create table if not exists json_files (
       id uuid primary key default gen_random_uuid(),
       original_name text not null,
+      cdk_prefix text not null default 'CDK',
       content jsonb not null,
       status text not null default 'available'
         check (status in ('available', 'delivered', 'disabled')),
@@ -39,6 +40,7 @@ async function createSchema() {
       delivered_cdk_id uuid
     )
   `;
+  await sql`alter table json_files add column if not exists cdk_prefix text not null default 'CDK'`;
   await sql`
     create table if not exists cdk_codes (
       id uuid primary key default gen_random_uuid(),
@@ -65,6 +67,7 @@ async function createSchema() {
     )
   `;
   await sql`create index if not exists json_files_status_idx on json_files(status, imported_at)`;
+  await sql`create index if not exists json_files_prefix_status_idx on json_files(cdk_prefix, status, imported_at)`;
   await sql`create index if not exists cdk_codes_code_idx on cdk_codes(upper(code))`;
   await sql`create index if not exists redeem_records_created_idx on redeem_records(created_at desc)`;
 }
@@ -72,6 +75,7 @@ async function createSchema() {
 export type JsonFileRow = {
   id: string;
   original_name: string;
+  cdk_prefix: string;
   content?: unknown;
   status: "available" | "delivered" | "disabled";
   imported_at: string;
