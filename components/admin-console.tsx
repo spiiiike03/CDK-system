@@ -161,20 +161,20 @@ export function AdminConsole() {
 
   async function importFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
-    setMessage({ type: "info", text: "正在解析并导入 JSON..." });
+    setMessage({ type: "info", text: "正在解析并导入账号 JSON..." });
     try {
       const items = await Promise.all(Array.from(fileList).map(async (file) => {
         const text = await file.text();
-        return { name: file.name, content: JSON.parse(text) };
+        return { name: file.name, text };
       }));
       const result = await api<{ imported: number }>("/api/admin/import", {
         method: "POST",
         body: JSON.stringify({ items }),
       });
-      setMessage({ type: "success", text: `已导入 ${result.imported} 个 JSON` });
+      setMessage({ type: "success", text: `已导入 ${result.imported} 个账号 JSON` });
       await refresh();
     } catch (error) {
-      setMessage({ type: "error", text: error instanceof Error ? error.message : "导入失败，请确认文件是合法 JSON" });
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "导入失败，请确认文件是合法 JSON/JSONL/TXT" });
     }
   }
 
@@ -323,12 +323,12 @@ function ImportPanel({ onImport }: { onImport: (files: FileList | null) => void 
     <div className="panel p-5">
       <div className="mb-4 flex items-center gap-2 font-bold text-ink">
         <Upload size={18} />
-        导入 JSON 文件
+        导入账号 JSON
       </div>
       <input
         className="input h-auto py-2"
         multiple
-        accept="application/json,.json"
+        accept="application/json,application/x-ndjson,text/plain,.json,.jsonl,.txt"
         type="file"
         onChange={(event) => void onImport(event.target.files)}
       />
