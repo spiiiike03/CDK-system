@@ -62,8 +62,9 @@ export function ActivateConsole() {
 
   function downloadJson(payload: unknown, filename = "cdk-export.json") {
     if (!payload) return;
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json;charset=utf-8",
+    const isTextPayload = typeof payload === "string";
+    const blob = new Blob([isTextPayload ? payload : JSON.stringify(payload, null, 2)], {
+      type: isTextPayload ? "text/plain;charset=utf-8" : "application/json;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -172,7 +173,7 @@ export function ActivateConsole() {
                     onClick={() => downloadJson(result.payload, result.filename || "cdk-export.json")}
                   >
                     <Download size={18} />
-                    合并下载全部 JSON
+                    合并下载全部账号
                   </button>
                 ) : null}
               </div>

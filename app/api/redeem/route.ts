@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { cdkPrefixFromCode, downloadName, normalizeCdk } from "@/lib/cdk";
 import { ensureSchema, sql } from "@/lib/db";
+import { buildJsonlTextExport, textExportName } from "@/lib/export";
 import { badRequest, clientIp, json, serverError } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -50,25 +51,10 @@ export async function POST(request: NextRequest) {
     const exportedAt = new Date().toISOString();
     const filename = successes.length === 1
       ? successes[0].filename
-      : `cdk-batch-${exportedAt.replace(/[:.]/g, "-")}.json`;
+      : `cdk-batch-${exportedAt.replace(/[:.]/g, "-")}.txt`;
     const payload = successes.length === 1
       ? successes[0].payload
-      : {
-          exportedAt,
-          totalCdks: successes.length,
-          totalFiles: deliveredCount,
-          items: successes.map((item) => ({
-            cdk: item.code,
-            files: item.files.map((file) => ({
-              name: file.name,
-              content: file.content,
-            })),
-          })),
-          errors: failures.map((item) => ({
-            cdk: item.code,
-            message: item.message,
-          })),
-        };
+      : buildJsonlTextExport(successes.flatMap((item) => item.files));
 
     return json({
       ok: successes.length > 0,
@@ -190,12 +176,15 @@ async function redeemOne(code: string, ip: string): Promise<RedeemSuccess | Rede
   const files = rows[0].files as RedeemFile[];
   const payload = files.length === 1
     ? files[0].content
-    : files.map((file) => ({ name: file.name, content: file.content }));
+    : buildJsonlTextExport(files);
+  const filename = files.length === 1
+    ? downloadName(rows[0].code, files.length)
+    : textExportName(downloadName(rows[0].code, files.length));
 
   return {
     ok: true,
     code: rows[0].code,
-    filename: downloadName(rows[0].code, files.length),
+    filename,
     deliveredCount: files.length,
     files,
     payload,
