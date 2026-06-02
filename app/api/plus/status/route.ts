@@ -53,7 +53,9 @@ async function syncOrder(order: PlusOrderRow): Promise<{ order: PlusOrderRow; ba
   let backendOrder: PixBackendOrder | undefined;
   try {
     if (order.pix_order_id) {
-      backendOrder = await pixBackend<PixBackendOrder>(`/api/public/pix/orders/${encodeURIComponent(order.pix_order_id)}`);
+      backendOrder = await pixBackend<PixBackendOrder>(`/api/public/pix/orders/${encodeURIComponent(order.pix_order_id)}/check`, {
+        method: "POST",
+      });
     } else if (order.pix_task_id) {
       const task = await pixBackend<PixBackendTask>(`/api/public/pix/tasks/${encodeURIComponent(order.pix_task_id)}`);
       backendOrder = task.order;

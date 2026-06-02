@@ -18,7 +18,7 @@ type OrderStatus = {
   order_id: string;
   display_id: string;
   code: string;
-  status: "processing" | "qr_ready" | "paid" | "failed" | "expired";
+  status: "processing" | "qr_ready" | "paid_waiting_subscription" | "paid" | "failed" | "expired";
   email?: string;
   payment_status?: string;
   subscription_status?: string;
@@ -61,11 +61,12 @@ export function ActivateConsole() {
 
   useEffect(() => {
     if (!order?.order_id || isDone) return;
+    const interval = order.status === "paid_waiting_subscription" ? 2500 : order.status === "processing" ? 3000 : 5000;
     const timer = window.setInterval(() => {
       void refreshOrder(order.order_id, false);
-    }, 5000);
+    }, interval);
     return () => window.clearInterval(timer);
-  }, [order?.order_id, isDone]);
+  }, [order?.order_id, order?.status, isDone]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -278,6 +279,14 @@ export function ActivateConsole() {
               </div>
             ) : null}
 
+            {order.status === "paid_waiting_subscription" ? (
+              <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-5 text-center text-sky-800">
+                <Loader2 className="mx-auto animate-spin" size={34} />
+                <div className="mt-3 font-bold">Pix 已付款，正在确认账号开通</div>
+                <p className="m-0 mt-1 text-sm">页面会自动刷新；账号接口确认 Plus 后才算 CDK 兑换完成。</p>
+              </div>
+            ) : null}
+
             {order.status === "qr_ready" ? (
               <div className="mt-5 grid gap-4">
                 {qrUrl ? (
@@ -331,6 +340,7 @@ function StepBar({ codeOk, status }: { codeOk: boolean; status?: OrderStatus["st
 
 function StatusBadge({ status }: { status: OrderStatus["status"] }) {
   if (status === "paid") return <span className="status ok">已开通</span>;
+  if (status === "paid_waiting_subscription") return <span className="status warn">已付款待确认</span>;
   if (status === "failed" || status === "expired") return <span className="status err">未完成</span>;
   return <span className="status warn">{status === "qr_ready" ? "待支付" : "处理中"}</span>;
 }
