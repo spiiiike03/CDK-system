@@ -16,6 +16,7 @@ export type PixBackendOrder = {
   public?: Record<string, unknown>;
   payment_check?: {
     confirmed?: boolean;
+    payment_received?: boolean;
     subscription_status?: string;
   };
   summary?: {

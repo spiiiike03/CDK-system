@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
         pending: visibleOrders.length,
         paid_total: allOrders.filter((order) => order.status === "paid_confirmed").length,
         paid_today: allOrders.filter((order) => order.status === "paid_confirmed" && order.paid_at >= todayStart).length,
+        payment_received: allOrders.filter((order) => order.status === "payment_received").length,
       },
       items: visibleOrders,
     });

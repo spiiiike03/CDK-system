@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         from selected_cdk
         left join plus_orders
           on plus_orders.cdk_id = selected_cdk.id
-         and plus_orders.status in ('processing', 'qr_ready')
+         and plus_orders.status in ('processing', 'qr_ready', 'paid_waiting_subscription')
         group by selected_cdk.id
       ),
       eligible_cdk as (

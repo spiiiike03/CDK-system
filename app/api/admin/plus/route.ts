@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
         (select count(*)::int from plus_orders) as total_orders,
         (select count(*)::int from plus_orders where status = 'processing') as processing_orders,
         (select count(*)::int from plus_orders where status = 'qr_ready') as qr_ready_orders,
+        (select count(*)::int from plus_orders where status = 'paid_waiting_subscription') as paid_waiting_subscription_orders,
         (select count(*)::int from plus_orders where status = 'paid') as paid_orders,
         (select count(*)::int from plus_orders where status = 'failed') as failed_orders,
         (select count(*)::int from plus_orders where status = 'expired') as expired_orders,

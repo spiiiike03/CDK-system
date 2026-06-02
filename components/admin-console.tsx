@@ -60,6 +60,7 @@ type PlusStats = {
   total_orders: number;
   processing_orders: number;
   qr_ready_orders: number;
+  paid_waiting_subscription_orders: number;
   paid_orders: number;
   failed_orders: number;
   expired_orders: number;
@@ -71,7 +72,7 @@ type PlusStats = {
 type PlusOrderItem = {
   id: string;
   cdk_code: string;
-  status: "processing" | "qr_ready" | "paid" | "failed" | "expired";
+  status: "processing" | "qr_ready" | "paid_waiting_subscription" | "paid" | "failed" | "expired";
   pix_task_id: string | null;
   pix_order_id: string | null;
   email: string | null;
@@ -136,6 +137,7 @@ function statusText(status: string) {
     delivered: "已发放",
     processing: "生成中",
     qr_ready: "待支付",
+    paid_waiting_subscription: "已付款待确认",
     paid: "已开通",
     failed: "失败",
     expired: "已过期",
@@ -181,6 +183,7 @@ export function AdminConsole() {
   const rechargeCards = useMemo(() => ([
     { label: "今日开通", value: plusStats?.today_paid_orders ?? 0, icon: CreditCard },
     { label: "待支付订单", value: plusStats?.qr_ready_orders ?? 0, icon: QrCode },
+    { label: "已付款待确认", value: plusStats?.paid_waiting_subscription_orders ?? 0, icon: CreditCard },
     { label: "全部成功", value: plusStats?.paid_orders ?? 0, icon: History },
     { label: "可用充值 CDK", value: plusStats?.active_recharge_cdks ?? 0, icon: KeyRound },
   ]), [plusStats]);

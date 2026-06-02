@@ -72,7 +72,7 @@ async function createSchema() {
       cdk_id uuid references cdk_codes(id),
       cdk_code text not null,
       status text not null default 'processing'
-        check (status in ('processing', 'qr_ready', 'paid', 'failed', 'expired')),
+        check (status in ('processing', 'qr_ready', 'paid_waiting_subscription', 'paid', 'failed', 'expired')),
       pix_task_id text,
       pix_order_id text,
       email text,
@@ -86,6 +86,31 @@ async function createSchema() {
     )
   `;
   await sql`create index if not exists json_files_status_idx on json_files(status, imported_at)`;
+  await sql`
+    do $$
+    begin
+      if exists (
+        select 1
+        from pg_constraint
+        where conrelid = 'plus_orders'::regclass
+          and conname = 'plus_orders_status_check'
+          and pg_get_constraintdef(oid) not like '%paid_waiting_subscription%'
+      ) then
+        alter table plus_orders drop constraint plus_orders_status_check;
+      end if;
+
+      if not exists (
+        select 1
+        from pg_constraint
+        where conrelid = 'plus_orders'::regclass
+          and conname = 'plus_orders_status_check'
+      ) then
+        alter table plus_orders
+        add constraint plus_orders_status_check
+        check (status in ('processing', 'qr_ready', 'paid_waiting_subscription', 'paid', 'failed', 'expired'));
+      end if;
+    end $$;
+  `;
   await sql`create index if not exists json_files_prefix_status_idx on json_files(cdk_prefix, status, imported_at)`;
   await sql`create index if not exists cdk_codes_code_idx on cdk_codes(upper(code))`;
   await sql`create index if not exists redeem_records_created_idx on redeem_records(created_at desc)`;
@@ -120,7 +145,7 @@ export type PlusOrderRow = {
   id: string;
   cdk_id: string;
   cdk_code: string;
-  status: "processing" | "qr_ready" | "paid" | "failed" | "expired";
+  status: "processing" | "qr_ready" | "paid_waiting_subscription" | "paid" | "failed" | "expired";
   pix_task_id: string | null;
   pix_order_id: string | null;
   email: string | null;

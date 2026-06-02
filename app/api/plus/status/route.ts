@@ -92,6 +92,11 @@ async function syncOrder(order: PlusOrderRow): Promise<{ order: PlusOrderRow; ba
     return { order: paid, backendOrder };
   }
 
+  if (backendOrder.status === "payment_received" || backendOrder.payment_check?.payment_received) {
+    const waiting = await markPaymentReceived(order, backendOrder);
+    return { order: waiting, backendOrder };
+  }
+
   const summary = backendOrder.summary || {};
   if (summary.qr_png || summary.qr_svg || summary.pix_code) {
     const rows = await sql`
@@ -139,6 +144,23 @@ async function markPaid(order: PlusOrderRow, backendOrder: PixBackendOrder): Pro
   return order;
 }
 
+async function markPaymentReceived(order: PlusOrderRow, backendOrder: PixBackendOrder): Promise<PlusOrderRow> {
+  const summary = backendOrder.summary || {};
+  const rows = await sql`
+    update plus_orders
+    set status = 'paid_waiting_subscription',
+        pix_order_id = ${backendOrder.order_id || order.pix_order_id},
+        email = ${backendOrder.email || summary.email || order.email},
+        backend_status = ${backendOrder.status || summary.final_status || 'payment_received'},
+        paid_at = coalesce(paid_at, now()),
+        updated_at = now()
+    where id = ${order.id}
+      and status <> 'paid'
+    returning *
+  `;
+  return (rows[0] as PlusOrderRow | undefined) || order;
+}
+
 async function markFailed(orderId: string, message: string): Promise<PlusOrderRow> {
   const rows = await sql`
     update plus_orders
@@ -164,9 +186,9 @@ function publicOrder(order: PlusOrderRow, backendOrder?: PixBackendOrder) {
     pix_order_id: order.pix_order_id || backendOrder?.order_id || "",
     payment_status: summary.payment_status || backendOrder?.status || order.backend_status || "",
     subscription_status: backendOrder?.payment_check?.subscription_status || "",
-    qr_png: status === "paid" ? "" : summary.qr_png || "",
-    qr_svg: status === "paid" ? "" : summary.qr_svg || "",
-    pix_code: status === "paid" ? "" : summary.pix_code || "",
+    qr_png: status === "paid" || status === "paid_waiting_subscription" ? "" : summary.qr_png || "",
+    qr_svg: status === "paid" || status === "paid_waiting_subscription" ? "" : summary.qr_svg || "",
+    pix_code: status === "paid" || status === "paid_waiting_subscription" ? "" : summary.pix_code || "",
     expires_at: summary.expires_at || (order.expires_at ? Math.floor(new Date(order.expires_at).getTime() / 1000) : 0),
     server_now: Math.floor(Date.now() / 1000),
     message: statusMessage(status),
@@ -180,6 +202,7 @@ function displayId(id: string) {
 
 function statusMessage(status: string) {
   if (status === "paid") return "ChatGPT Plus 已开通";
+  if (status === "paid_waiting_subscription") return "Pix 已付款，正在确认账号开通";
   if (status === "qr_ready") return "Pix 二维码已生成，请完成支付";
   if (status === "failed") return "开通失败";
   if (status === "expired") return "订单已过期";

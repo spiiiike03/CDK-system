@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
                select count(*)::int
                from plus_orders p
                where p.cdk_id = c.id
-                 and p.status in ('processing', 'qr_ready')
+                 and p.status in ('processing', 'qr_ready', 'paid_waiting_subscription')
              ) as pending_count
       from cdk_codes c
       where upper(c.code) = upper(${code})

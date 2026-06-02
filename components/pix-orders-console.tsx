@@ -28,6 +28,7 @@ type PixOrdersResponse = {
     pending: number;
     paid_total: number;
     paid_today: number;
+    payment_received: number;
   };
   items: PixOrder[];
 };
@@ -36,7 +37,7 @@ const PAGE_SIZE = 12;
 
 export function PixOrdersConsole() {
   const [orders, setOrders] = useState<PixOrder[]>([]);
-  const [stats, setStats] = useState<PixOrdersResponse["stats"]>({ pending: 0, paid_total: 0, paid_today: 0 });
+  const [stats, setStats] = useState<PixOrdersResponse["stats"]>({ pending: 0, paid_total: 0, paid_today: 0, payment_received: 0 });
   const [viewMode, setViewMode] = useState<ViewMode>("qr");
   const [page, setPage] = useState(1);
   const [serverNow, setServerNow] = useState(Math.floor(Date.now() / 1000));
@@ -61,7 +62,7 @@ export function PixOrdersConsole() {
         throw new Error(data.message || "加载失败");
       }
       setOrders(data.items || []);
-      setStats(data.stats || { pending: 0, paid_total: 0, paid_today: 0 });
+      setStats(data.stats || { pending: 0, paid_total: 0, paid_today: 0, payment_received: 0 });
       setServerNow(data.server_now || Math.floor(Date.now() / 1000));
       setPage((current) => Math.min(Math.max(1, current), Math.max(1, Math.ceil((data.items || []).length / PAGE_SIZE))));
     } catch (err) {
@@ -120,6 +121,8 @@ export function PixOrdersConsole() {
               今日开通 <b className="text-emerald-400">{stats.paid_today}</b>
               <span className="mx-4 text-slate-600">|</span>
               累计开通 <b className="text-emerald-400">{stats.paid_total}</b>
+              <span className="mx-4 text-slate-600">|</span>
+              已付款待确认 <b className="text-sky-300">{stats.payment_received}</b>
               <span className="mx-4 text-slate-600">|</span>
               待支付 <b className="text-amber-300">{stats.pending}</b>
             </div>
