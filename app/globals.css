@@ -122,6 +122,52 @@ button:disabled {
   background: #d14343;
 }
 
+.control-button,
+.copy-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 8px 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.control-button {
+  border: 1px solid #263244;
+  color: #f8fafc;
+  background: #111827;
+}
+
+.control-button:hover:not(:disabled) {
+  border-color: #475569;
+  background: #172033;
+}
+
+.control-button:disabled {
+  color: #64748b;
+  background: #0f1622;
+}
+
+.copy-button {
+  border: 1px solid #10b981;
+  color: #04130f;
+  background: #10b981;
+}
+
+.copy-button:hover:not(:disabled) {
+  background: #34d399;
+}
+
+.copy-button:disabled {
+  border-color: #263244;
+  color: #64748b;
+  background: #111827;
+}
+
 .input,
 .textarea {
   width: 100%;
