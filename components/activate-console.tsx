@@ -34,6 +34,7 @@ type OrderStatus = {
 type Notice = { type: "success" | "error" | "info"; message: string } | null;
 
 const STORED_ORDER_KEY = "plus_order_id";
+const SESSION_URL = "https://chatgpt.com/api/auth/session";
 
 export function ActivateConsole() {
   const [code, setCode] = useState("");
@@ -44,6 +45,7 @@ export function ActivateConsole() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sessionLinkCopied, setSessionLinkCopied] = useState(false);
   const [tick, setTick] = useState(0);
 
   const normalizedCode = useMemo(() => code.trim().toUpperCase(), [code]);
@@ -159,6 +161,12 @@ export function ActivateConsole() {
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  async function copySessionUrl() {
+    await navigator.clipboard.writeText(SESSION_URL);
+    setSessionLinkCopied(true);
+    window.setTimeout(() => setSessionLinkCopied(false), 1400);
+  }
+
   function resetFlow() {
     setAccessToken("");
     setCodeInfo(null);
@@ -215,10 +223,19 @@ export function ActivateConsole() {
                 <label className="mb-2 block text-sm font-medium text-slate-600">第二步 · access token</label>
                 <textarea
                   className="textarea min-h-[122px] rounded-xl font-mono text-sm"
-                  placeholder='粘贴 access token，或 chatgpt.com/api/auth/session 返回 JSON 中的 accessToken'
+                  placeholder="粘贴 accessToken"
                   value={accessToken}
                   onChange={(event) => setAccessToken(event.target.value)}
                 />
+                <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 max-[640px]:flex-col max-[640px]:items-stretch">
+                  <div className="min-w-0 flex-1">
+                    打开 <span className="font-mono text-slate-900">{SESSION_URL}</span>，复制返回 JSON 中的 <span className="font-mono text-slate-900">accessToken</span>
+                  </div>
+                  <button className="button h-9 shrink-0 rounded-lg px-3" onClick={copySessionUrl} type="button">
+                    <Copy size={16} />
+                    {sessionLinkCopied ? "已复制" : "复制地址"}
+                  </button>
+                </div>
                 <button className="button success mt-3 h-12 w-full rounded-xl text-base" disabled={!canSubmit} onClick={submitOrder} type="button">
                   {loading && codeInfo ? <Loader2 className="animate-spin" size={19} /> : <QrCode size={19} />}
                   开通 Plus
