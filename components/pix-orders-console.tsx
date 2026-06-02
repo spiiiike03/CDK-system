@@ -241,7 +241,7 @@ function EmptyState() {
 }
 
 function remaining(expiresAt: number, now: number) {
-  if (!expiresAt) return "--:--";
+  if (!expiresAt) return "过期时间未知";
   const seconds = Math.max(0, expiresAt - now);
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const visibleOrders = allOrders.filter((order) => (
       order.status !== "paid_confirmed"
       && (order.qr_png || order.qr_svg || order.pix_code)
-      && (!order.expires_at || order.expires_at > now)
+      && order.expires_at > now
     ));
     const todayStart = Math.floor(new Date(new Date().toDateString()).getTime() / 1000);
 
@@ -54,8 +54,6 @@ function publicOrder(order: PixBackendOrder): PublicPixOrder {
   const publicMeta = (order.public || {}) as Record<string, unknown>;
   const orderId = String(order.order_id || summary.order_id || summary.task_id || "");
   const createdAt = Number((order as { created_at?: number }).created_at || 0);
-  const summaryExpiresAt = Number(summary.expires_at || 0);
-  const fallbackExpiresAt = createdAt ? createdAt + 24 * 60 * 60 : 0;
   return {
     order_id: orderId,
     display_id: `PAY-${orderId.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase()}`,
@@ -66,7 +64,7 @@ function publicOrder(order: PixBackendOrder): PublicPixOrder {
     qr_png: String(summary.qr_png || ""),
     qr_svg: String(summary.qr_svg || ""),
     pix_code: String(summary.pix_code || ""),
-    expires_at: summaryExpiresAt || fallbackExpiresAt,
+    expires_at: Number(summary.expires_at || 0),
     created_at: createdAt,
     updated_at: Number((order as { updated_at?: number }).updated_at || 0),
     paid_at: Number(order.paid_at || 0),
