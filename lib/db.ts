@@ -66,10 +66,31 @@ async function createSchema() {
       created_at timestamptz not null default now()
     )
   `;
+  await sql`
+    create table if not exists plus_orders (
+      id uuid primary key default gen_random_uuid(),
+      cdk_id uuid references cdk_codes(id),
+      cdk_code text not null,
+      status text not null default 'processing'
+        check (status in ('processing', 'qr_ready', 'paid', 'failed', 'expired')),
+      pix_task_id text,
+      pix_order_id text,
+      email text,
+      backend_status text,
+      error text,
+      ip text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      paid_at timestamptz,
+      expires_at timestamptz
+    )
+  `;
   await sql`create index if not exists json_files_status_idx on json_files(status, imported_at)`;
   await sql`create index if not exists json_files_prefix_status_idx on json_files(cdk_prefix, status, imported_at)`;
   await sql`create index if not exists cdk_codes_code_idx on cdk_codes(upper(code))`;
   await sql`create index if not exists redeem_records_created_idx on redeem_records(created_at desc)`;
+  await sql`create index if not exists plus_orders_code_idx on plus_orders(upper(cdk_code), created_at desc)`;
+  await sql`create index if not exists plus_orders_status_idx on plus_orders(status, updated_at desc)`;
 }
 
 export type JsonFileRow = {
@@ -93,4 +114,21 @@ export type CdkRow = {
   expires_at: string | null;
   used_at: string | null;
   created_at: string;
+};
+
+export type PlusOrderRow = {
+  id: string;
+  cdk_id: string;
+  cdk_code: string;
+  status: "processing" | "qr_ready" | "paid" | "failed" | "expired";
+  pix_task_id: string | null;
+  pix_order_id: string | null;
+  email: string | null;
+  backend_status: string | null;
+  error: string | null;
+  ip: string | null;
+  created_at: string;
+  updated_at: string;
+  paid_at: string | null;
+  expires_at: string | null;
 };
