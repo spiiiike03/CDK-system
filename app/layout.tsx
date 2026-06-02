@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CDK JSON 兑换系统",
-  description: "后台导入 JSON，用户使用 CDK 兑换下载。",
+  title: "ChatGPT Plus 卡密开通",
+  description: "使用 CDK 和 access token 自助开通 ChatGPT Plus Pix 订单。",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
