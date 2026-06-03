@@ -205,7 +205,7 @@ function displayId(id: string) {
 function statusMessage(status: string) {
   if (status === "paid") return "ChatGPT Plus 已开通";
   if (status === "paid_waiting_subscription") return "Pix 已付款，正在确认账号开通";
-  if (status === "qr_ready") return "Pix 二维码已生成，请完成支付";
+  if (status === "qr_ready") return "qr生成完成，请耐心等待支付开通";
   if (status === "failed") return "开通失败";
   if (status === "expired") return "订单已过期";
   return "正在生成 Pix 二维码";
