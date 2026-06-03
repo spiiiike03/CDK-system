@@ -17,6 +17,7 @@ type OrderStatus = {
   ok: boolean;
   order_id: string;
   display_id: string;
+  pix_order_id?: string;
   code: string;
   status: "processing" | "qr_ready" | "paid_waiting_subscription" | "paid" | "failed" | "expired";
   email?: string;
@@ -258,7 +259,7 @@ export function ActivateConsole() {
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="m-0 text-lg font-bold">订单状态</h2>
-                <p className="m-0 mt-1 font-mono text-sm text-slate-500">{order.display_id}</p>
+                <p className="m-0 mt-1 font-mono text-sm text-slate-500">{pixDisplayId(order)}</p>
               </div>
               <StatusBadge status={order.status} />
             </div>
@@ -410,6 +411,12 @@ function StatusBadge({ status }: { status: OrderStatus["status"] }) {
   if (status === "paid_waiting_subscription") return <span className="status warn">已付款待确认</span>;
   if (status === "failed" || status === "expired") return <span className="status err">未完成</span>;
   return <span className="status warn">{status === "qr_ready" ? "待支付" : "处理中"}</span>;
+}
+
+function pixDisplayId(order: OrderStatus) {
+  const orderId = String(order.pix_order_id || "");
+  if (!orderId) return order.display_id;
+  return `PAY-${orderId.replace(/[^A-Za-z0-9]/g, "").slice(-8).toUpperCase()}`;
 }
 
 function KeyValue({ label, value }: { label: string; value: string }) {
