@@ -44,15 +44,11 @@ export function ActivateConsole() {
   const [notice, setNotice] = useState<Notice>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [sessionLinkCopied, setSessionLinkCopied] = useState(false);
-  const [tick, setTick] = useState(0);
 
   const normalizedCode = useMemo(() => code.trim().toUpperCase(), [code]);
   const extractedAccessToken = useMemo(() => extractAccessTokenInput(accessToken), [accessToken]);
   const canSubmit = Boolean(codeInfo?.ok && extractedAccessToken.length >= 30 && !loading);
-  const qrUrl = order?.qr_png || order?.qr_svg || "";
-  const pixCode = order?.pix_code || "";
   const isDone = order?.status === "paid" || order?.status === "failed" || order?.status === "expired";
 
   useEffect(() => {
@@ -70,11 +66,6 @@ export function ActivateConsole() {
     }, interval);
     return () => window.clearInterval(timer);
   }, [order?.order_id, order?.status, isDone]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   async function verifyCode() {
     setLoading(true);
@@ -153,13 +144,6 @@ export function ActivateConsole() {
     } finally {
       setChecking(false);
     }
-  }
-
-  async function copyPixCode() {
-    if (!pixCode) return;
-    await navigator.clipboard.writeText(pixCode);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1400);
   }
 
   async function copySessionUrl() {
@@ -283,61 +267,121 @@ export function ActivateConsole() {
               <KeyValue label="CDK" value={order.code} />
               <KeyValue label="账号" value={order.email || "-"} />
               <KeyValue label="订单状态" value={order.message || order.status} />
-              {order.expires_at && order.status !== "paid" ? <KeyValue label="剩余时间" value={remainingText(order.expires_at, tick)} /> : null}
             </div>
 
-            {order.status === "paid" ? (
-              <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
-                <CheckCircle2 className="mx-auto text-emerald-600" size={42} />
-                <div className="mt-3 text-lg font-bold text-emerald-800">ChatGPT Plus 已开通</div>
-                <p className="m-0 mt-1 text-sm text-emerald-700">Pix 码已从前后端清理，CDK 已计数。</p>
-              </div>
-            ) : null}
+            <OrderProgress order={order} />
 
-            {order.status === "processing" ? (
-              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 text-center text-amber-800">
-                <Loader2 className="mx-auto animate-spin" size={34} />
-                <div className="mt-3 font-bold">正在生成 Pix 二维码</div>
-                <p className="m-0 mt-1 text-sm">通常需要几十秒，请保持页面打开。</p>
-              </div>
-            ) : null}
-
-            {order.status === "paid_waiting_subscription" ? (
-              <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-5 text-center text-sky-800">
-                <Loader2 className="mx-auto animate-spin" size={34} />
-                <div className="mt-3 font-bold">Pix 已付款，正在确认账号开通</div>
-                <p className="m-0 mt-1 text-sm">页面会自动刷新；账号接口确认 Plus 后才算 CDK 兑换完成。</p>
-              </div>
-            ) : null}
-
-            {order.status === "qr_ready" ? (
-              <div className="mt-5 grid gap-4">
-                {qrUrl ? (
-                  <div className="mx-auto w-full max-w-[340px] rounded-xl border border-slate-200 bg-white p-3">
-                    <img className="h-auto w-full" src={qrUrl} alt="Pix QR" />
-                  </div>
-                ) : null}
-                {pixCode ? (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-600">Pix 码</label>
-                    <div className="flex gap-2 max-[640px]:flex-col">
-                      <div className="min-h-11 flex-1 overflow-auto rounded-xl border border-slate-200 bg-slate-950 px-3 py-3 font-mono text-xs text-white">
-                        {pixCode}
-                      </div>
-                      <button className="button success min-w-[128px] rounded-xl" onClick={copyPixCode} type="button">
-                        <Copy size={17} />
-                        {copied ? "已复制" : "复制 Pix"}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
           </section>
         ) : null}
       </div>
     </main>
   );
+}
+
+function OrderProgress({ order }: { order: OrderStatus }) {
+  const info = progressInfo(order.status);
+  const failed = order.status === "failed" || order.status === "expired";
+  return (
+    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm text-slate-500">当前进度</div>
+          <div className="mt-1 text-base font-bold text-slate-900">{info.title}</div>
+        </div>
+        <div className={`rounded-full px-3 py-1 text-sm font-bold ${failed ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+          {info.percent}%
+        </div>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className={`h-full rounded-full transition-all ${failed ? "bg-red-500" : "bg-emerald-500"}`}
+          style={{ width: `${info.percent}%` }}
+        />
+      </div>
+      <p className="m-0 mt-3 text-sm text-slate-600">{info.description}</p>
+      {order.status === "qr_ready" ? (
+        <a className="button mt-4 inline-flex rounded-xl" href="/pix" target="_blank" rel="noreferrer">
+          查看支付页
+        </a>
+      ) : null}
+      <div className="mt-4 grid gap-2">
+        {progressSteps(order.status).map((step) => (
+          <div key={step.label} className="flex items-start gap-3 rounded-lg bg-white px-3 py-2">
+            <div className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full ${step.done ? "bg-emerald-500 text-white" : step.active ? "bg-amber-400 text-white" : "bg-slate-200 text-slate-500"}`}>
+              {step.done ? <CheckCircle2 size={15} /> : step.active ? <Loader2 className="animate-spin" size={14} /> : <span className="h-2 w-2 rounded-full bg-current" />}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-800">{step.label}</div>
+              <div className="text-xs text-slate-500">{step.description}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function progressInfo(status: OrderStatus["status"]) {
+  const map: Record<OrderStatus["status"], { percent: number; title: string; description: string }> = {
+    processing: {
+      percent: 25,
+      title: "正在生成 Pix 支付任务",
+      description: "后端正在创建 Stripe Pix 订单，支付码会出现在独立 Pix 展示页。",
+    },
+    qr_ready: {
+      percent: 50,
+      title: "Pix 已生成，等待支付",
+      description: "支付由后端和 Pix 展示页处理；此页面只跟踪 CDK 开通进度。",
+    },
+    paid_waiting_subscription: {
+      percent: 80,
+      title: "已付款，正在确认账号开通",
+      description: "后端正在使用提交的 accessToken 查询账号订阅状态，确认 Plus 后才算完成。",
+    },
+    paid: {
+      percent: 100,
+      title: "ChatGPT Plus 已开通",
+      description: "账号侧已确认 Plus，CDK 兑换完成并计数。",
+    },
+    failed: {
+      percent: 100,
+      title: "开通失败",
+      description: "订单未完成，请查看错误信息或重新提交。",
+    },
+    expired: {
+      percent: 100,
+      title: "订单已过期",
+      description: "该 Pix 订单已过期，需要重新发起开通。",
+    },
+  };
+  return map[status];
+}
+
+function progressSteps(status: OrderStatus["status"]) {
+  const rank: Record<OrderStatus["status"], number> = {
+    processing: 1,
+    qr_ready: 2,
+    paid_waiting_subscription: 3,
+    paid: 4,
+    failed: 4,
+    expired: 4,
+  };
+  const current = rank[status];
+  const steps = [
+    ["提交任务", "CDK 和 accessToken 已提交到后端"],
+    ["生成 Pix", "后端创建 Pix 支付订单"],
+    ["等待支付", "支付在 Pix 展示页完成"],
+    ["确认开通", "后端确认账号已变为 Plus"],
+  ] as const;
+  return steps.map(([label, description], index) => {
+    const step = index + 1;
+    return {
+      label,
+      description,
+      done: status === "paid" ? true : step < current,
+      active: status !== "paid" && status !== "failed" && status !== "expired" && step === current,
+    };
+  });
 }
 
 function StepBar({ codeOk, status }: { codeOk: boolean; status?: OrderStatus["status"] }) {
@@ -379,14 +423,6 @@ function KeyValue({ label, value }: { label: string; value: string }) {
 
 function stepClass(active: boolean) {
   return `rounded-xl border px-3 py-2 ${active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50"}`;
-}
-
-function remainingText(expiresAt: number, tick: number) {
-  void tick;
-  const left = Math.max(0, Number(expiresAt || 0) - Math.floor(Date.now() / 1000));
-  const minutes = String(Math.floor(left / 60)).padStart(2, "0");
-  const seconds = String(left % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
 }
 
 function extractAccessTokenInput(value: string) {
