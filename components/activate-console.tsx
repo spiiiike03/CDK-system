@@ -183,7 +183,7 @@ export function ActivateConsole() {
               <div className="flex gap-2 max-[560px]:flex-col">
                 <input
                   className="input h-12 flex-1 rounded-xl text-center font-mono text-lg font-bold uppercase"
-                  placeholder="BX-XXXXXXXX"
+                  placeholder="PX-XXXXXXXX"
                   value={code}
                   onChange={(event) => {
                     setCode(event.target.value.toUpperCase());
