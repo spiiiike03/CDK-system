@@ -49,7 +49,8 @@ export function ActivateConsole() {
   const [tick, setTick] = useState(0);
 
   const normalizedCode = useMemo(() => code.trim().toUpperCase(), [code]);
-  const canSubmit = Boolean(codeInfo?.ok && accessToken.trim().length >= 30 && !loading);
+  const extractedAccessToken = useMemo(() => extractAccessTokenInput(accessToken), [accessToken]);
+  const canSubmit = Boolean(codeInfo?.ok && extractedAccessToken.length >= 30 && !loading);
   const qrUrl = order?.qr_png || order?.qr_svg || "";
   const pixCode = order?.pix_code || "";
   const isDone = order?.status === "paid" || order?.status === "failed" || order?.status === "expired";
@@ -102,7 +103,7 @@ export function ActivateConsole() {
     try {
       const data = await postJson<OrderStatus>("/api/plus/submit", {
         code: normalizedCode,
-        at: accessToken.trim(),
+        at: extractedAccessToken,
       });
       window.localStorage.setItem(STORED_ORDER_KEY, data.order_id);
       setOrder(data);
@@ -223,19 +224,24 @@ export function ActivateConsole() {
                 <label className="mb-2 block text-sm font-medium text-slate-600">第二步 · access token</label>
                 <textarea
                   className="textarea min-h-[122px] rounded-xl font-mono text-sm"
-                  placeholder="粘贴 accessToken"
+                  placeholder="可粘贴整段 session JSON，或只粘贴 accessToken"
                   value={accessToken}
                   onChange={(event) => setAccessToken(event.target.value)}
                 />
                 <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 max-[640px]:flex-col max-[640px]:items-stretch">
                   <div className="min-w-0 flex-1">
-                    打开 <span className="font-mono text-slate-900">{SESSION_URL}</span>，复制返回 JSON 中的 <span className="font-mono text-slate-900">accessToken</span>
+                    打开 <span className="font-mono text-slate-900">{SESSION_URL}</span>，可整段复制返回 JSON，系统会自动提取 <span className="font-mono text-slate-900">accessToken</span>
                   </div>
                   <button className="button h-9 shrink-0 rounded-lg px-3" onClick={copySessionUrl} type="button">
                     <Copy size={16} />
                     {sessionLinkCopied ? "已复制" : "复制地址"}
                   </button>
                 </div>
+                {accessToken.trim() ? (
+                  <p className={`mt-2 text-sm font-medium ${extractedAccessToken ? "text-emerald-700" : "text-red-600"}`}>
+                    {extractedAccessToken ? "已识别 accessToken，可直接开通" : "未识别到 accessToken，请检查粘贴内容"}
+                  </p>
+                ) : null}
                 <button className="button success mt-3 h-12 w-full rounded-xl text-base" disabled={!canSubmit} onClick={submitOrder} type="button">
                   {loading && codeInfo ? <Loader2 className="animate-spin" size={19} /> : <QrCode size={19} />}
                   开通 Plus
@@ -381,6 +387,60 @@ function remainingText(expiresAt: number, tick: number) {
   const minutes = String(Math.floor(left / 60)).padStart(2, "0");
   const seconds = String(left % 60).padStart(2, "0");
   return `${minutes}:${seconds}`;
+}
+
+function extractAccessTokenInput(value: string) {
+  const text = value.trim();
+  if (!text) return "";
+  const unwrapped = unwrapBearer(stripWrappingQuotes(text));
+  const json = parseJsonLike(unwrapped);
+  const fromJson = json ? findTokenValue(json) : "";
+  if (fromJson) return unwrapBearer(stripWrappingQuotes(fromJson));
+  const match = unwrapped.match(/["']?(?:accessToken|access_token)["']?\s*[:=]\s*["']([^"']+)["']/i);
+  if (match?.[1]) return unwrapBearer(stripWrappingQuotes(match[1]));
+  return unwrapped.length >= 30 && !/\s/.test(unwrapped) ? unwrapped : "";
+}
+
+function parseJsonLike(text: string): unknown {
+  if (!text.startsWith("{") && !text.startsWith("[")) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function findTokenValue(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const token = findTokenValue(item);
+      if (token) return token;
+    }
+    return "";
+  }
+  const data = value as Record<string, unknown>;
+  for (const key of ["accessToken", "access_token"]) {
+    const token = data[key];
+    if (typeof token === "string" && token.trim()) return token.trim();
+  }
+  for (const child of Object.values(data)) {
+    const token = findTokenValue(child);
+    if (token) return token;
+  }
+  return "";
+}
+
+function stripWrappingQuotes(value: string) {
+  const text = value.trim();
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    return text.slice(1, -1).trim();
+  }
+  return text;
+}
+
+function unwrapBearer(value: string) {
+  return value.trim().replace(/^bearer\s+/i, "").trim();
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {

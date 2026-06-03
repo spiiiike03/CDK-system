@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     await ensureSchema();
     const body = await request.json().catch(() => ({}));
     const code = normalizeCdk(body.code ?? body.cdk ?? "");
-    const at = String(body.at ?? body.access_token ?? body.accessToken ?? "").trim();
+    const at = extractAccessToken(body.at ?? body.access_token ?? body.accessToken ?? "");
     if (!code) {
       return badRequest("请输入 CDK");
     }
@@ -128,4 +128,62 @@ async function submitFailureMessage(code: string) {
 
 function displayId(id: string) {
   return `PLUS-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+function extractAccessToken(value: unknown): string {
+  if (value && typeof value === "object") {
+    const nested = findAccessToken(value);
+    if (nested) return unwrapBearer(stripWrappingQuotes(nested));
+  }
+  const text = stripWrappingQuotes(String(value ?? "").trim());
+  if (!text) return "";
+  const direct = unwrapBearer(text);
+  const parsed = parseJsonLike(direct);
+  const fromJson = parsed ? findAccessToken(parsed) : "";
+  if (fromJson) return unwrapBearer(stripWrappingQuotes(fromJson));
+  const match = direct.match(/["']?(?:accessToken|access_token)["']?\s*[:=]\s*["']([^"']+)["']/i);
+  if (match?.[1]) return unwrapBearer(stripWrappingQuotes(match[1]));
+  return direct.length >= 30 && !/\s/.test(direct) ? direct : "";
+}
+
+function parseJsonLike(text: string): unknown {
+  if (!text.startsWith("{") && !text.startsWith("[")) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function findAccessToken(value: unknown): string {
+  if (!value || typeof value !== "object") return "";
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const token = findAccessToken(item);
+      if (token) return token;
+    }
+    return "";
+  }
+  const data = value as Record<string, unknown>;
+  for (const key of ["accessToken", "access_token"]) {
+    const token = data[key];
+    if (typeof token === "string" && token.trim()) return token.trim();
+  }
+  for (const child of Object.values(data)) {
+    const token = findAccessToken(child);
+    if (token) return token;
+  }
+  return "";
+}
+
+function stripWrappingQuotes(value: string): string {
+  const text = value.trim();
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    return text.slice(1, -1).trim();
+  }
+  return text;
+}
+
+function unwrapBearer(value: string): string {
+  return value.trim().replace(/^bearer\s+/i, "").trim();
 }
