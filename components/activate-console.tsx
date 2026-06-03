@@ -299,10 +299,10 @@ function OrderProgress({ order }: { order: OrderStatus }) {
         />
       </div>
       <p className="m-0 mt-3 text-sm text-slate-600">{info.description}</p>
-      {order.status === "qr_ready" ? (
-        <a className="button mt-4 inline-flex rounded-xl" href="/pix" target="_blank" rel="noreferrer">
-          查看支付页
-        </a>
+      {order.status !== "paid" && order.status !== "failed" && order.status !== "expired" ? (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          预计 10 分钟完成，请耐心等候
+        </div>
       ) : null}
       <div className="mt-4 grid gap-2">
         {progressSteps(order.status).map((step) => (
